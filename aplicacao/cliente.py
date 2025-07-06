@@ -33,7 +33,7 @@ class JanelaRegistro(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("Registrar Eleitor")
-        self.geometry("400x200")
+        self.geometry("400x300")
 
         tk.Label(self, text="CPF:").pack(pady=5)
         self.entry_cpf = tk.Entry(self)
