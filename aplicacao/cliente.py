@@ -104,7 +104,7 @@ class JanelaVotacao(tk.Toplevel):
         self.var_candidato = tk.StringVar(value=" ")
         tk.Radiobutton(self, text="10 - Lorena Borges", variable=self.var_candidato, value="13").pack(anchor=tk.W, padx=20)
         tk.Radiobutton(self, text="4 - Caetano", variable=self.var_candidato, value="42").pack(anchor=tk.W, padx=20)
-        tk.Radiobutton(self, text="72 - Vitor Hugo", variable=self.var_candidato, value="99").pack(anchor=tk.W, padx=20)
+        tk.Radiobutton(self, text="12 - Vitor Hugo", variable=self.var_candidato, value="99").pack(anchor=tk.W, padx=20)
 
         self.btn_votar = tk.Button(self, text="Votar", command=self.votar)
         self.btn_votar.pack(pady=20)
