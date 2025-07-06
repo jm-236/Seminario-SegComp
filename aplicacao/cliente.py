@@ -4,6 +4,9 @@ import json
 import base64
 import os
 from crypto_utils import assinar_dados, gerar_e_salvar_chaves
+import tkinter as tk
+from tkinter import filedialog
+
 
 API_URL = 'http://127.0.0.1:5000'
 
@@ -60,8 +63,11 @@ def votar():
     print("\n--- Sistema de Votação Digital ---")
     
     eleitor_cpf = input("Digite seu CPF: ")
-    caminho_chave_privada = input("Digite o caminho para seu arquivo de chave privada (ex: eleitor_12345678900_privada.pem): ")
-    
+    caminho_chave_privada = filedialog.askopenfilename(
+        title="Seleciona a sua chave privada",
+        filetypes=[("Arquivos de chave", ".pem")]
+    )
+
     if not os.path.exists(caminho_chave_privada):
         print(f"\nERRO: Arquivo de chave privada '{caminho_chave_privada}' não encontrado.")
         return
