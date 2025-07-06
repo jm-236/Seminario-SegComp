@@ -5,136 +5,165 @@ import base64
 import os
 from crypto_utils import assinar_dados, gerar_e_salvar_chaves
 import tkinter as tk
-from tkinter import filedialog
-
+from tkinter import filedialog, messagebox
 
 API_URL = 'http://127.0.0.1:5000'
 
-def registrar_eleitor():
-    """
-    Conduz o processo de registro de um novo eleitor.
-    """
-    print("\n--- Registro de Novo Eleitor ---")
-    cpf = input("Digite o CPF do novo eleitor: ")
-    nome = input("Digite o nome completo do novo eleitor: ")
 
-    # 1. Gerar as chaves para o eleitor
-    print(f"\nGerando par de chaves para {nome}...")
-    try:
-        # Limpa o CPF para usar em nomes de arquivo
-        cpf_limpo = ''.join(filter(str.isdigit, cpf))
-        arq_pub, arq_priv = gerar_e_salvar_chaves(cpf_limpo)
-        print(f"Chaves salvas em '{arq_pub}' e '{arq_priv}'.")
-    except Exception as e:
-        print(f"ERRO ao gerar chaves: {e}")
-        return
+class AplicacaoCliente(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Cliente de Votação")
+        self.geometry("300x150")
 
-    # 2. Ler a chave pública para enviar ao servidor
-    with open(arq_pub, "r") as f:
-        chave_publica_pem = f.read()
+        self.btn_registrar = tk.Button(self, text="Registrar Novo Eleitor", command=self.abrir_janela_registro)
+        self.btn_registrar.pack(pady=10)
 
-    # 3. Montar o payload para a API de registro
-    payload = {
-        "cpf": cpf,
-        "nome": nome,
-        "chave_publica_pem": chave_publica_pem
-    }
+        self.btn_votar = tk.Button(self, text="Votar", command=self.abrir_janela_votacao)
+        self.btn_votar.pack(pady=10)
 
-    # 4. Enviar os dados para o servidor
-    print("Registrando eleitor no sistema central...")
-    try:
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post(f"{API_URL}/registrar_eleitor", data=json.dumps(payload), headers=headers)
-        
-        print("\n--- Resposta do Servidor ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Mensagem: {response.json()}")
-        print("----------------------------")
+    def abrir_janela_registro(self):
+        JanelaRegistro(self)
 
-    except requests.exceptions.ConnectionError:
-        print("\nERRO: Não foi possível conectar ao servidor. Verifique se o 'servidor.py' está em execução.")
-    except Exception as e:
-        print(f"\nERRO inesperado ao registrar o eleitor: {e}")
+    def abrir_janela_votacao(self):
+        JanelaVotacao(self)
 
-def votar():
-    """
-    Conduz o processo de votação pelo terminal.
-    """
-    print("\n--- Sistema de Votação Digital ---")
-    
-    eleitor_cpf = input("Digite seu CPF: ")
-    caminho_chave_privada = filedialog.askopenfilename(
-        title="Seleciona a sua chave privada",
-        filetypes=[("Arquivos de chave", ".pem")]
-    )
 
-    if not os.path.exists(caminho_chave_privada):
-        print(f"\nERRO: Arquivo de chave privada '{caminho_chave_privada}' não encontrado.")
-        return
+class JanelaRegistro(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Registrar Eleitor")
+        self.geometry("400x200")
 
-    print("\nCandidatos disponíveis:")
-    print("  13 - Candidato da Esperança")
-    print("  42 - Candidato da Resposta")
-    print("  99 - Candidato do Futuro")
-    candidato_id = input("Digite o número do seu candidato: ")
-    
-    voto_data = {
-        "eleitor_cpf": eleitor_cpf,
-        "candidato_id": candidato_id
-    }
-    
-    print("\nGerando seu voto...")
-    
-    try:
-        assinatura_bytes = assinar_dados(voto_data, caminho_chave_privada)
-    except Exception as e:
-        print(f"\nERRO ao assinar o voto: {e}")
-        return
+        tk.Label(self, text="CPF:").pack(pady=5)
+        self.entry_cpf = tk.Entry(self)
+        self.entry_cpf.pack(pady=5)
 
-    assinatura_b64 = base64.b64encode(assinatura_bytes).decode('utf-8')
-    
-    payload_final = {
-        "voto_data": voto_data,
-        "assinatura_b64": assinatura_b64
-    }
-    
-    print("Voto assinado com sucesso. Enviando para a urna digital...")
-    
-    try:
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post(f"{API_URL}/votar", data=json.dumps(payload_final), headers=headers)
-        
-        print("\n--- Resposta do Servidor ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Mensagem: {response.json()}")
-        print("----------------------------")
+        tk.Label(self, text="Nome Completo:").pack(pady=5)
+        self.entry_nome = tk.Entry(self)
+        self.entry_nome.pack(pady=5)
 
-    except requests.exceptions.ConnectionError:
-        print("\nERRO: Não foi possível conectar ao servidor. Verifique se o 'servidor.py' está em execução.")
-    except Exception as e:
-        print(f"\nERRO inesperado ao enviar o voto: {e}")
+        self.btn_registrar = tk.Button(self, text="Registrar", command=self.registrar_eleitor)
+        self.btn_registrar.pack(pady=20)
+
+    def registrar_eleitor(self):
+        cpf = self.entry_cpf.get()
+        nome = self.entry_nome.get()
+
+        if not cpf or not nome:
+            messagebox.showerror("Erro", "CPF e Nome são obrigatórios.")
+            return
+
+        try:
+            # Limpa o CPF para usar em nomes de arquivo
+            cpf_limpo = ''.join(filter(str.isdigit, cpf))
+            arq_pub, arq_priv = gerar_e_salvar_chaves(cpf_limpo)
+            messagebox.showinfo("Chaves Geradas", f"Chaves salvas em '{arq_pub}' e '{arq_priv}'.\nGuarde sua chave privada em um local seguro!")
+
+            with open(arq_pub, "r") as f:
+                chave_publica_pem = f.read()
+
+            payload = {
+                "cpf": cpf,
+                "nome": nome,
+                "chave_publica_pem": chave_publica_pem
+            }
+
+            headers = {'Content-Type': 'application/json'}
+            response = requests.post(f"{API_URL}/registrar_eleitor", data=json.dumps(payload), headers=headers)
+
+            if response.status_code == 201:
+                messagebox.showinfo("Sucesso", response.json().get('mensagem', 'Eleitor registrado com sucesso.'))
+                self.destroy()
+            else:
+                messagebox.showerror("Erro no Registro", f"Status: {response.status_code}\n{response.json().get('erro', 'Erro desconhecido')}")
+
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Erro de Conexão", "Não foi possível conectar ao servidor. Verifique se o 'servidor.py' está em execução.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Ocorreu um erro inesperado ao registrar o eleitor: {e}")
+
+
+class JanelaVotacao(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Votar")
+        self.geometry("400x350")
+        self.caminho_chave_privada = ""
+
+        tk.Label(self, text="CPF:").pack(pady=5)
+        self.entry_cpf = tk.Entry(self)
+        self.entry_cpf.pack(pady=5)
+
+        self.btn_selecionar_chave = tk.Button(self, text="Selecionar Chave Privada", command=self.selecionar_chave)
+        self.btn_selecionar_chave.pack(pady=10)
+        self.label_chave = tk.Label(self, text="Nenhuma chave selecionada")
+        self.label_chave.pack()
+
+        tk.Label(self, text="Candidatos:").pack(pady=10)
+        self.var_candidato = tk.StringVar(value=" ")
+        tk.Radiobutton(self, text="13 - Candidato da Esperança", variable=self.var_candidato, value="13").pack(anchor=tk.W, padx=20)
+        tk.Radiobutton(self, text="42 - Candidato da Resposta", variable=self.var_candidato, value="42").pack(anchor=tk.W, padx=20)
+        tk.Radiobutton(self, text="99 - Candidato do Futuro", variable=self.var_candidato, value="99").pack(anchor=tk.W, padx=20)
+
+        self.btn_votar = tk.Button(self, text="Votar", command=self.votar)
+        self.btn_votar.pack(pady=20)
+
+    def selecionar_chave(self):
+        self.caminho_chave_privada = filedialog.askopenfilename(
+            title="Selecione sua chave privada",
+            filetypes=[("Arquivos PEM", "*.pem")]
+        )
+        if self.caminho_chave_privada:
+            self.label_chave.config(text=os.path.basename(self.caminho_chave_privada))
+        else:
+            self.label_chave.config(text="Nenhuma chave selecionada")
+
+    def votar(self):
+        eleitor_cpf = self.entry_cpf.get()
+        candidato_id = self.var_candidato.get()
+
+        if not eleitor_cpf or not self.caminho_chave_privada or candidato_id == " ":
+            messagebox.showerror("Erro", "Todos os campos são obrigatórios.")
+            return
+
+        if not os.path.exists(self.caminho_chave_privada):
+            messagebox.showerror("Erro", f"Arquivo de chave privada não encontrado: '{self.caminho_chave_privada}'")
+            return
+
+        voto_data = {
+            "eleitor_cpf": eleitor_cpf,
+            "candidato_id": candidato_id
+        }
+
+        try:
+            assinatura_bytes = assinar_dados(voto_data, self.caminho_chave_privada)
+            assinatura_b64 = base64.b64encode(assinatura_bytes).decode('utf-8')
+
+            payload_final = {
+                "voto_data": voto_data,
+                "assinatura_b64": assinatura_b64
+            }
+
+            headers = {'Content-Type': 'application/json'}
+            response = requests.post(f"{API_URL}/votar", data=json.dumps(payload_final), headers=headers)
+
+            if response.status_code == 200:
+                messagebox.showinfo("Voto Registrado", response.json().get('mensagem', 'Voto registrado com sucesso.'))
+                self.destroy()
+            else:
+                messagebox.showerror("Erro ao Votar", f"Status: {response.status_code}\n{response.json().get('erro', 'Erro desconhecido')}")
+
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Erro de Conexão", "Não foi possível conectar ao servidor. Verifique se o 'servidor.py' está em execução.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Ocorreu um erro inesperado ao enviar o voto: {e}")
+
 
 def main():
-    """
-    Menu principal da aplicação cliente.
-    """
-    while True:
-        print("\n===== MENU PRINCIPAL DO CLIENTE DE VOTAÇÃO =====")
-        print("1. Registrar um novo eleitor")
-        print("2. Votar")
-        print("3. Sair")
-        
-        escolha = input("Escolha uma opção: ")
-        
-        if escolha == '1':
-            registrar_eleitor()
-        elif escolha == '2':
-            votar()
-        elif escolha == '3':
-            print("Saindo...")
-            break
-        else:
-            print("Opção inválida. Por favor, tente novamente.")
+    app = AplicacaoCliente()
+    app.mainloop()
+
 
 if __name__ == '__main__':
     main()
