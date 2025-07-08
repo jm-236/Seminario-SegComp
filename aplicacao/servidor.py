@@ -76,9 +76,15 @@ def votar():
     eleitor_cpf = payload_completo['voto_data'].get('eleitor_cpf')
     if not eleitor_cpf:
         return jsonify({'erro': 'CPF do eleitor não encontrado nos dados do voto'}), 400
+    
+    conn = get_db_connection()
+    eleitor_existe = conn.execute('SELECT 1 FROM eleitores WHERE cpf = ?', (eleitor_cpf,)).fetchone()
+    if not eleitor_existe:
+        conn.close()
+        return jsonify({'erro': f'O CPF {eleitor_cpf} não está registrado no sistema.'}), 404
         
     try:
-        conn = get_db_connection()
+        # conn = get_db_connection()
         # Armazena o payload completo. A verificação será na apuração.
         conn.execute('INSERT INTO votos (eleitor_cpf, payload_voto_json) VALUES (?, ?)',
                      (eleitor_cpf, json.dumps(payload_completo)))
@@ -108,7 +114,7 @@ def apurar_votos():
         eleitor_cpf = voto_data['eleitor_cpf']
         candidato_id = voto_data['candidato_id']
 
-        # 1. Buscar os dados do eleitor (incluindo a chave pública) no registro confiável
+        # Buscar os dados do eleitor (incluindo a chave pública) no registro confiável
         eleitor_registrado = conn.execute('SELECT nome, chave_publica_pem FROM eleitores WHERE cpf = ?', (eleitor_cpf,)).fetchone()
         
         if not eleitor_registrado:
@@ -119,10 +125,10 @@ def apurar_votos():
         chave_publica_pem = eleitor_registrado['chave_publica_pem']
         assinatura_bytes = base64.b64decode(assinatura_b64)
 
-        # 2. Verificar a assinatura
+        # Verificar a assinatura
         assinatura_valida = verificar_assinatura(assinatura_bytes, voto_data, chave_publica_pem)
 
-        # 3. Contabilizar ou descartar
+        # Contabilizar ou descartar
         if assinatura_valida:
             resultados[candidato_id] = resultados.get(candidato_id, 0) + 1
         else:

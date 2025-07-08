@@ -1,5 +1,6 @@
 # crypto_utils.py
 import json
+import os
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes
@@ -7,18 +8,22 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 def gerar_e_salvar_chaves(cpf_eleitor):
     """
-    Gera um par de chaves RSA para um eleitor e salva em arquivos .pem.
+    Gera um par de chaves RSA para um eleitor e salva em arquivos .pem
+    dentro de uma pasta chamada 'chaves'.
     Retorna os nomes dos arquivos da chave pública e privada.
     """
+    
+    PASTA_CHAVES = "chaves"
+    os.makedirs(PASTA_CHAVES, exist_ok=True)
+    
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
     )
 
-    # Formata os nomes dos arquivos
-    nome_arquivo_privado = f"eleitor_{cpf_eleitor}_privada.pem"
-    nome_arquivo_publico = f"eleitor_{cpf_eleitor}_publica.pem"
-
+    nome_arquivo_privado = os.path.join(PASTA_CHAVES, f"eleitor_{cpf_eleitor}_privada.pem")
+    nome_arquivo_publico = os.path.join(PASTA_CHAVES, f"eleitor_{cpf_eleitor}_publica.pem")
+    
     # Salva a chave privada em um arquivo PEM
     pem_private = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -40,7 +45,11 @@ def gerar_e_salvar_chaves(cpf_eleitor):
     return nome_arquivo_publico, nome_arquivo_privado
 
 def assinar_dados(dados, caminho_chave_privada):
-    
+    """
+    Assina o voto do eleitor utilizando a chave privada do mesmo, 
+    com o algoritmo de Hash criptográfico SHA-256
+    Retorna os dados assinados
+    """
     with open(caminho_chave_privada, "rb") as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
@@ -55,6 +64,10 @@ def assinar_dados(dados, caminho_chave_privada):
     return assinatura
 
 def verificar_assinatura(assinatura_bytes, dados, chave_publica_pem_string):
+    """
+    Função que verifica se a assinatura de um determinado voto é válida, utilizando a chave pública do eleitor, salva no sistema.
+    Retorna True se a assinatura for válida e False caso contrário
+    """
     try:
         public_key = serialization.load_pem_public_key(
             chave_publica_pem_string.encode('utf-8')
